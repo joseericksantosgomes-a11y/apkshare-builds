@@ -1,0 +1,36 @@
+name: apk-build
+run-name: build-${{ inputs.build_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Pasta do projeto
+        required: true
+      build_id:
+        description: Identificador do build
+        required: true
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Instalar Android SDK 34
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Compilar o APK
+        working-directory: ${{ inputs.project }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Publicar o APK
+        working-directory: ${{ inputs.project }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "build-${{ inputs.build_id }}" "app/build/outputs/apk/debug/app-debug.apk" --title "APK build-${{ inputs.build_id }}" --notes "Compilado automaticamente pelo APKShare Pro."
